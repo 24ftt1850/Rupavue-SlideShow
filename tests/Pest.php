@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /*
@@ -47,4 +49,31 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * The booth owns these tables, so this app has no migrations for them.
+ * Build the columns the slideshow reads.
+ */
+function createBoothTables(): void
+{
+    Schema::create('photoshoot_themes', function (Blueprint $table) {
+        $table->id();
+        $table->string('theme_name');
+        $table->text('description')->nullable();
+        $table->text('prompt_prefix');
+        $table->boolean('is_active')->default(true);
+        $table->timestamps();
+    });
+
+    Schema::create('generated_images', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('photo_session_id');
+        $table->foreignId('theme_id');
+        $table->text('final_prompt_used');
+        $table->string('generation_status')->default('success');
+        $table->string('generated_photo_path')->nullable();
+        $table->boolean('is_deleted')->default(false);
+        $table->timestamp('created_at')->nullable();
+    });
 }

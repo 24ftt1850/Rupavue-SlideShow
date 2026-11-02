@@ -21,6 +21,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Theme Photos
+    |--------------------------------------------------------------------------
+    |
+    | The "Themes Available" slide shows every image in this Google Drive
+    | folder, and the "Latest Generated" slide shows the newest images in a
+    | second folder. Each folder may be set as its ID or its share link. Share
+    | them as "Anyone with the link" and set the API key in
+    | services.google_drive. File lists are cached for the given number of
+    | seconds, so new photos appear after at most that long.
+    |
+    */
+
+    'theme_photos_folder_id' => env('SLIDESHOW_THEME_PHOTOS_FOLDER_ID'),
+
+    'theme_photos_cache_seconds' => (int) env('SLIDESHOW_THEME_PHOTOS_CACHE_SECONDS', 300),
+
+    'latest_photos_folder' => env('SLIDESHOW_LATEST_PHOTOS_FOLDER'),
+
+    'latest_photos_limit' => (int) env('SLIDESHOW_LATEST_PHOTOS_LIMIT', 10),
+
+    // Kept short because the screen checks this folder every few seconds.
+    'latest_photos_cache_seconds' => (int) env('SLIDESHOW_LATEST_PHOTOS_CACHE_SECONDS', 5),
+
+    /*
+    |--------------------------------------------------------------------------
     | Timing
     |--------------------------------------------------------------------------
     |
@@ -32,6 +57,22 @@ return [
     'slide_seconds' => (int) env('SLIDESHOW_SLIDE_SECONDS', 10),
 
     'refresh_seconds' => (int) env('SLIDESHOW_REFRESH_SECONDS', 15),
+
+    /*
+    |--------------------------------------------------------------------------
+    | New Photo Pop-up
+    |--------------------------------------------------------------------------
+    |
+    | The showcase pops up each photo added to the latest photos folder after
+    | the page loaded, then adds it to the "Latest Generated" stacks. This is
+    | how often it checks the folder and how long each pop-up stays on screen
+    | (both in seconds).
+    |
+    */
+
+    'new_photo_check_seconds' => (int) env('SLIDESHOW_NEW_PHOTO_CHECK_SECONDS', 5),
+
+    'new_photo_seconds' => (int) env('SLIDESHOW_NEW_PHOTO_SECONDS', 10),
 
     /*
     |--------------------------------------------------------------------------

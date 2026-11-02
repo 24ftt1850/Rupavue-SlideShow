@@ -8,34 +8,27 @@
 
     @php
         /*
-         * Temporary sample images.
-         * Replace these with real generated-photo records later.
+         * Newest photos from the booth's Google Drive folder, newest first.
+         * They alternate between the stacks so the two newest are both in front.
          */
-        $latestPhotos = [
-            'photo-01.jpg',
-            'photo-02.jpg',
-            'photo-03.jpg',
-            'photo-04.jpg',
-            'photo-05.jpg',
-            'photo-06.jpg',
-            'photo-07.jpg',
-            'photo-08.jpg',
-            'photo-09.jpg',
-            'photo-10.jpg',
-        ];
-
-        $leftPhotos = array_slice($latestPhotos, 0, 5);
-        $rightPhotos = array_slice($latestPhotos, 5, 5);
+        $latestPhotos = $latestPhotos ?? [];
+        $leftPhotos = array_values(array_filter($latestPhotos, fn (int $index): bool => $index % 2 === 0, ARRAY_FILTER_USE_KEY));
+        $rightPhotos = array_values(array_filter($latestPhotos, fn (int $index): bool => $index % 2 === 1, ARRAY_FILTER_USE_KEY));
     @endphp
+
+    @if (empty($latestPhotos))
+        <p class="rv-latest-empty">New photos from the booth will appear here.</p>
+    @endif
 
     <!-- LEFT PHOTO STACK -->
     <div class="rv-photo-stack rv-photo-stack-left" data-photo-stack>
         @foreach ($leftPhotos as $index => $photo)
             <div class="rv-photo-card" data-depth="{{ $index }}">
                 <img
-                    src="{{ asset('images/showcase/latest/' . $photo) }}"
-                    alt="Latest generated photo {{ $index + 1 }}"
+                    src="{{ $photo['url'] }}"
+                    alt="Latest generated photo"
                     loading="eager"
+                    referrerpolicy="no-referrer"
                 >
                 <div class="rv-photo-glow"></div>
             </div>
@@ -47,9 +40,10 @@
         @foreach ($rightPhotos as $index => $photo)
             <div class="rv-photo-card" data-depth="{{ $index }}">
                 <img
-                    src="{{ asset('images/showcase/latest/' . $photo) }}"
-                    alt="Latest generated photo {{ $index + 6 }}"
+                    src="{{ $photo['url'] }}"
+                    alt="Latest generated photo"
                     loading="eager"
+                    referrerpolicy="no-referrer"
                 >
                 <div class="rv-photo-glow"></div>
             </div>
@@ -110,6 +104,17 @@
         box-shadow: 0 0 12px rgba(0, 140, 255, .65);
     }
 
+    .rv-latest-empty {
+        position: absolute;
+        top: 55%;
+        left: 0;
+        width: 100%;
+        color: #a9c7e9;
+        font-size: clamp(14px, 1.3vw, 20px);
+        letter-spacing: 2px;
+        text-align: center;
+    }
+
     /* TWO PHOTO STACKS (width capped by height so they fit short screens) */
     .rv-photo-stack {
         position: absolute;
@@ -143,11 +148,12 @@
         will-change: transform, opacity;
     }
 
+    /* Show the whole photo; any spare space shows the card's dark background */
     .rv-photo-card img {
         display: block;
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
     }
 
     .rv-photo-glow {
@@ -349,6 +355,48 @@ document.addEventListener('DOMContentLoaded', function () {
             timer = null;
         }
     }
+
+    // Each stack holds half of the configured number of latest photos.
+    const maxCardsPerStack = {{ (int) ceil(config('slideshow.latest_photos_limit') / 2) }};
+    let nextStackIndex = 0;
+
+    // A new photo from the booth (announced by the pop-up) lands at the front
+    // of a stack, and the oldest card in that stack drops off.
+    document.addEventListener('rv:new-photo', function (event) {
+        // Fill the shorter stack first; when they are even, alternate sides.
+        const stackList = Array.from(stacks);
+        const fewestCards = Math.min(...stackList.map((stack) => stack.children.length));
+        const candidates = stackList.filter((stack) => stack.children.length === fewestCards);
+        const stack = candidates.includes(stackList[nextStackIndex]) ? stackList[nextStackIndex] : candidates[0];
+
+        nextStackIndex = (stackList.indexOf(stack) + 1) % stackList.length;
+
+        const card = document.createElement('div');
+        const photo = document.createElement('img');
+        const glow = document.createElement('div');
+
+        card.className = 'rv-photo-card';
+        photo.src = event.detail.url;
+        photo.alt = 'Latest generated photo';
+        photo.referrerPolicy = 'no-referrer';
+        glow.className = 'rv-photo-glow';
+        card.append(photo, glow);
+        stack.prepend(card);
+
+        while (stack.children.length > maxCardsPerStack) {
+            stack.lastElementChild.remove();
+        }
+
+        Array.from(stack.children).forEach((stackCard, index) => {
+            stackCard.dataset.depth = index;
+            stackCard.classList.remove('rv-photo-enter');
+        });
+
+        void card.offsetWidth;
+        card.classList.add('rv-photo-enter');
+
+        slide.querySelector('.rv-latest-empty')?.remove();
+    });
 
     // Start only when this slide is visible.
     const observer = new MutationObserver(function () {

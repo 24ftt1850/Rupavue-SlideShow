@@ -23,6 +23,8 @@
         @include('showcase.slides.latest-creations')
     </section>
 
+    @include('showcase.new-photo-popup')
+
 @endsection
 
 @push('showcase-scripts')
@@ -36,6 +38,11 @@
         let currentSlide = 0;
 
         function showNextSlide() {
+            // Hold the current slide while a new photo is popped up.
+            if (document.body.classList.contains('rv-popup-open')) {
+                return;
+            }
+
             slides[currentSlide].classList.remove('active');
 
             currentSlide = (currentSlide + 1) % slides.length;

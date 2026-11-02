@@ -1,59 +1,21 @@
+@inject('floatingCardLayout', 'App\Services\FloatingCardLayout')
+
 <div class="rv-themes">
     @php
         /*
-         * Each card floats at its own position around the centred heading.
-         * x / y are the card's centre point as a percentage of the slide.
+         * One floating card for every photo in the Google Drive folder,
+         * spread around the centred heading. Cards shrink as the folder grows.
          */
-        $themes = [
-            [
-                'image' => 'anime.jpg',
-                'category' => 'ANIMATION',
-                'name' => 'Anime Universe',
-                'description' => 'Step into your favourite anime world.',
-                'x' => '11%', 'y' => '33%', 'rotate' => '-6deg', 'scale' => '.95', 'duration' => '7s', 'delay' => '-1s',
-            ],
-            [
-                'image' => 'cyberpunk.jpg',
-                'category' => 'SCI-FI',
-                'name' => 'Cyberpunk City',
-                'description' => 'A futuristic world filled with neon lights and technology.',
-                'x' => '27%', 'y' => '25%', 'rotate' => '5deg', 'scale' => '.8', 'duration' => '8.5s', 'delay' => '-4s',
-            ],
-            [
-                'image' => 'fantasy.jpg',
-                'category' => 'IMAGINATION',
-                'name' => 'Fantasy Realm',
-                'description' => 'Discover extraordinary scenes in a magical world.',
-                'x' => '22%', 'y' => '74%', 'rotate' => '-3deg', 'scale' => '1', 'duration' => '6.5s', 'delay' => '-2.5s',
-            ],
-            [
-                'image' => 'graduation.jpg',
-                'category' => 'MILESTONES',
-                'name' => 'Graduation',
-                'description' => 'Celebrate your achievements with a memorable portrait.',
-                'x' => '73%', 'y' => '25%', 'rotate' => '-5deg', 'scale' => '.8', 'duration' => '8s', 'delay' => '-3s',
-            ],
-            [
-                'image' => 'mafia.jpg',
-                'category' => 'CINEMATIC',
-                'name' => 'Crime Boss',
-                'description' => 'Enter a cinematic world of power and elegance.',
-                'x' => '89%', 'y' => '33%', 'rotate' => '6deg', 'scale' => '.95', 'duration' => '7.5s', 'delay' => '-5s',
-            ],
-            [
-                'image' => 'warrior.jpg',
-                'category' => 'LEGENDS',
-                'name' => 'Warrior Legacy',
-                'description' => 'Embrace the legacy of powerful warriors.',
-                'x' => '78%', 'y' => '74%', 'rotate' => '3deg', 'scale' => '1', 'duration' => '6.8s', 'delay' => '-1.5s',
-            ],
-        ];
+        $themePhotos = $themePhotos ?? [];
+        $layout = $floatingCardLayout->arrange(count($themePhotos));
     @endphp
 
     <header class="rv-themes-heading">
         <div class="rv-themes-halo" aria-hidden="true"></div>
 
-        <span class="rv-themes-eyebrow">{{ count($themes) }} STYLES · ONE TAP</span>
+        @if (count($themePhotos))
+            <span class="rv-themes-eyebrow">{{ count($themePhotos) }} STYLES · ONE TAP</span>
+        @endif
 
         <h1>
             Multiple <span>AI</span><br>
@@ -67,32 +29,28 @@
         </div>
     </header>
 
-    <div class="rv-theme-field" data-theme-field>
-        @foreach ($themes as $index => $theme)
+    <div
+        class="rv-theme-field"
+        data-theme-field
+        style="--columns: {{ $layout['columns'] }}; --rows: {{ $layout['rows'] }};"
+    >
+        @foreach ($themePhotos as $index => $photo)
+            @php($slot = $layout['slots'][$index])
+
             <div
                 class="rv-theme-slot"
-                style="--x: {{ $theme['x'] }}; --y: {{ $theme['y'] }}; --rotate: {{ $theme['rotate'] }}; --scale: {{ $theme['scale'] }}; --float-duration: {{ $theme['duration'] }}; --float-delay: {{ $theme['delay'] }}; --enter-delay: {{ $index * 0.12 }}s;"
+                style="--x: {{ $slot['x'] }}%; --y: {{ $slot['y'] }}%; --rotate: {{ $slot['rotate'] }}deg; --scale: {{ $slot['scale'] }}; --float-duration: {{ $slot['duration'] }}s; --float-delay: {{ $slot['delay'] }}s; --enter-delay: {{ round($index * 0.05, 2) }}s;"
             >
                 <div class="rv-theme-float">
-                    <article class="rv-theme-card" data-theme-card>
-                        <div class="rv-theme-image">
-                            <img
-                                src="{{ asset('images/themes/' . $theme['image']) }}"
-                                alt="{{ $theme['name'] }}"
-                            >
-                            <div class="rv-theme-image-shade"></div>
-                        </div>
-
-                        <div class="rv-theme-info">
-                            <span class="rv-theme-category">
-                                {{ $theme['category'] }}
-                            </span>
-
-                            <h2>{{ $theme['name'] }}</h2>
-
-                            <p>{{ $theme['description'] }}</p>
-                        </div>
-                    </article>
+                    <div class="rv-theme-card" data-theme-card>
+                        <img
+                            class="rv-theme-photo"
+                            src="{{ $photo['url'] }}"
+                            alt="AI theme example"
+                            referrerpolicy="no-referrer"
+                            data-theme-photo
+                        >
+                    </div>
 
                     <div class="rv-theme-shadow" aria-hidden="true"></div>
                 </div>
@@ -217,7 +175,8 @@
         position: absolute;
         top: var(--y);
         left: var(--x);
-        width: min(15vw, 28vh);
+        /* Fill most of a grid cell; the field is about 92vh tall */
+        width: min(calc(82% / var(--columns)), calc(110vh / var(--rows)));
         transform: translate(-50%, -50%) rotate(var(--rotate)) scale(var(--scale));
     }
 
@@ -238,13 +197,13 @@
         }
     }
 
-    /* Card: entrance and spotlight */
+    /* Card: 6:4 landscape frame (a 4x6 print), entrance and spotlight */
     .rv-theme-card {
         position: relative;
-        aspect-ratio: 3 / 4;
+        aspect-ratio: 6 / 4;
         overflow: hidden;
         border: 1.5px solid rgba(69, 179, 255, .8);
-        border-radius: 24px;
+        border-radius: clamp(8px, 1.2vw, 20px);
         background: #06152f;
         box-shadow:
             0 0 12px rgba(0, 140, 255, .45),
@@ -309,83 +268,22 @@
         }
     }
 
-    .rv-theme-image {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-    }
-
-    .rv-theme-image img {
+    .rv-theme-photo {
+        display: block;
         width: 100%;
         height: 100%;
-        display: block;
         object-fit: cover;
         object-position: center;
         transition: transform 1.2s ease;
     }
 
-    .rv-theme-card.is-featured .rv-theme-image img {
+    .rv-theme-card.is-featured .rv-theme-photo {
         transform: scale(1.06);
     }
 
-    .rv-theme-image-shade {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            to bottom,
-            rgba(2, 7, 22, 0) 30%,
-            rgba(2, 7, 22, .2) 50%,
-            rgba(2, 7, 22, .94) 100%
-        );
-    }
-
-    .rv-theme-info {
-        position: absolute;
+    /* Lift the spotlighted card above its neighbours */
+    .rv-theme-slot:has(.is-featured) {
         z-index: 1;
-        left: 8%;
-        right: 8%;
-        bottom: 7%;
-        color: #f7fbff;
-    }
-
-    .rv-theme-category {
-        display: inline-block;
-        margin-bottom: 6px;
-        color: #48dce5;
-        font-size: clamp(9px, .7vw, 12px);
-        font-weight: 800;
-        letter-spacing: 1.2px;
-    }
-
-    .rv-theme-info h2 {
-        margin: 0;
-        color: #fff;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: clamp(17px, 1.5vw, 26px);
-        line-height: 1.05;
-        font-weight: 700;
-        text-shadow: 0 2px 12px #020716;
-    }
-
-    /* Description reveals only on the featured card */
-    .rv-theme-info p {
-        max-height: 0;
-        margin: 0;
-        overflow: hidden;
-        opacity: 0;
-        color: #d9e8ff;
-        font-size: clamp(10px, .8vw, 13px);
-        line-height: 1.4;
-        transition:
-            max-height .8s ease,
-            margin .8s ease,
-            opacity .8s ease;
-    }
-
-    .rv-theme-card.is-featured .rv-theme-info p {
-        max-height: 4.2em;
-        margin-top: 8px;
-        opacity: 1;
     }
 
     /* Pause movement when this slide is not visible */
@@ -422,7 +320,7 @@
         .rv-theme-field {
             position: relative;
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 26px 18px;
         }
 
@@ -459,6 +357,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const interval = 2500;
     let featuredIndex = -1;
     let timer = null;
+
+    // Hide the card of any photo that fails to load.
+    cards.forEach(function (card) {
+        card.querySelector('[data-theme-photo]').addEventListener('error', function () {
+            card.closest('.rv-theme-slot').hidden = true;
+        });
+    });
 
     // Spotlight one card at a time.
     function featureNextCard() {
